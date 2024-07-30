@@ -1,10 +1,14 @@
-from fastapi import FastAPI, File, UploadFile
+from dotenv import load_dotenv
+from fastapi import FastAPI, File, UploadFile, HTTPException, Header
 from fastapi.responses import FileResponse
 from pdf2image import convert_from_path
 import os
 import tempfile
 import zipfile
 import asyncio
+
+load_dotenv()
+API_KEY = os.getenv("API_KEY")
 
 # 起動時に一時ファイルの置き場を作成する
 BASE_DIR = os.path.join(os.path.dirname(__file__), "temp")
@@ -43,7 +47,10 @@ app = FastAPI()
 
 
 @app.post("/convert/")
-async def convert_pptx_to_images(file: UploadFile = File(...)):
+async def convert_pptx_to_images(
+    file: UploadFile = File(...),
+    x_api_key: str = Header(...),
+):
     """
     アップロードされたPPTXファイルを画像に変換し、ZIPファイルとして返すエンドポイント。
 
@@ -60,6 +67,10 @@ async def convert_pptx_to_images(file: UploadFile = File(...)):
     Raises:
         Exception: サブプロセスがエラーを返した場合、例外が発生します。
     """
+    # APIキーの検証
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+
     temp_dir = tempfile.mkdtemp(dir=BASE_DIR)
 
     # ファイル名を設定（nullの場合はデフォルト値を使用）し、アップロードされたファイルを保存
